@@ -1,0 +1,13 @@
+# Ignore everything
+/*
+# unignore program script file
+!progscript/
+!.gitignore
+!README.md
+# ignore trained models, data, and result vectors
+progscript/models/*
+progscript/vectors/*
+progscript/Data/*
+progscript/models(text_emb_contain_keywords)/*
+
+
