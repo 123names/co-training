@@ -9,8 +9,10 @@ import warnings
 import collections
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from sklearn import metrics
+from sklearn.decomposition import PCA
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_score, recall_score,f1_score,accuracy_score
@@ -174,12 +176,15 @@ def read_text_embedding(Dataset = "pubmed", emb_type = "off", training_size = "3
     if emb_type != "off":
         print("Total text vector records:",len(text_emb))
         print("Vector dimension: ", len(text_emb[0]))
-    return text_emb, emb_pid
+        final_text_emb = np.column_stack((emb_pid,text_emb))
+        final_text_emb = sorted(final_text_emb,key=lambda x: (int(x[0])))
+    return final_text_emb
 
 # read trained paper citation graph
 def read_citation_embedding_sorted(Dataset = "pubmed", emb_type = "off", labeled_only = True):
     
     citation_emb = []
+    emb_pid = []
     while True:
         if emb_type == "n2v":
             if labeled_only:
@@ -188,7 +193,8 @@ def read_citation_embedding_sorted(Dataset = "pubmed", emb_type = "off", labeled
                     for line in f:
                         read_data = line.split(" ")
                         if(len(read_data)==101):
-                            citation_emb.append(read_data)
+                            citation_emb.append(read_data[1:])
+                            emb_pid.append(read_data[0])
                 f.close()
                 break
             else:
@@ -197,7 +203,8 @@ def read_citation_embedding_sorted(Dataset = "pubmed", emb_type = "off", labeled
                     for line in f:
                         read_data = line.split(" ")
                         if(len(read_data)==101):
-                            citation_emb.append(read_data)
+                            citation_emb.append(read_data[1:])
+                            emb_pid.append(read_data[0])
                 f.close()
                 break
         elif emb_type =="node2vec":
@@ -207,7 +214,8 @@ def read_citation_embedding_sorted(Dataset = "pubmed", emb_type = "off", labeled
                     for line in f:
                         read_data = line.split(" ")
                         if(len(read_data)==101):
-                            citation_emb.append(read_data)
+                            citation_emb.append(read_data[1:])
+                            emb_pid.append(read_data[0])
                 f.close()
                 break
         elif emb_type == "off":
@@ -218,15 +226,47 @@ def read_citation_embedding_sorted(Dataset = "pubmed", emb_type = "off", labeled
     if emb_type != "off":
         print("Total citation vector records:",len(citation_emb))
         print("Vector dimension: ", len(citation_emb[0]))
-        citation_emb = sorted(citation_emb,key=lambda x: (int(x[0])))
-    return citation_emb
+        final_citation_emb = np.column_stack((emb_pid,citation_emb))
+        final_citation_emb = sorted(final_citation_emb,key=lambda x: (int(x[0])))
+    return final_citation_emb
 
-def select_productive_groups(labeled_data, threshold_select_name_group):
+# Principal Component Analysis (PCA) applied to this data identifies the combination of attributes
+# (principal components, or directions in the feature space) that account for the most variance in the data.
+def visualizeWithPCA(data, label, plot_title, plotSavingPath=None, name=None, max_show_label = 10):
+    # pca on input data
+    pca = PCA(n_components=2)
+    pca_transformed = pca.fit_transform(X=data)
+    #print("PCA_transformed data: ",pca_transformed[:3])
+    #print(label[:3])
+    pca_one = pca_transformed[:,0]
+    pca_two = pca_transformed[:,1]
+    # plot to show
+    fig, ax = plt.subplots(figsize=(9,7))
+    for author in np.unique(label):
+        ix = np.where(label == author)
+        ax.set_title(plot_title, fontsize=18)
+        if len(np.unique(label))<max_show_label:
+            ax.scatter(pca_one[ix], pca_two[ix], cmap='viridis', label = author, s = 50)
+        else:
+            ax.scatter(pca_one[ix], pca_two[ix], cmap='viridis', s = 50)
+            ax.annotate("Plot contains "+str(len(np.unique(label)))+" labeles thus omitted details", xy=(1, 0), xycoords='axes fraction',
+                        fontsize=16,xytext=(-5, 5), textcoords='offset points', ha='right', va='bottom')
+    ax.legend()
+    plt.xlabel("PCA one")
+    plt.ylabel("PCA two")
+    # save plot
+    if plotSavingPath!=None and name!=None:
+        if not os.path.exists(plotSavingPath):
+            os.makedirs(plotSavingPath)
+        plt.savefig((plotSavingPath+name+"_PCA.png").encode('utf-8'))
+    plt.show()
+
+def select_productive_groups(labeled_data, threshold):
     # count number of paper each author write based on author ID
     authorCounter = collections.Counter(labeled_data["authorID"])
-    # remove author that do not write more than 100 papers
+    # remove author that do not write more than threshold amount of papers
     for k in list(authorCounter):
-        if authorCounter[k] < threshold_select_name_group:
+        if authorCounter[k] < threshold:
             del authorCounter[k]
     return authorCounter
 
@@ -277,7 +317,7 @@ def extract_embedding(all_embedding, all_embedding_pid, wanted_pid_list):
             else:
                 total_missing_sample+=1
                 print("Missing Sample: ", wanted_pid)
-                temp = [0] * len(all_embedding[0])
+                temp = [np.nan] * len(all_embedding[0])
                 extracted_emb.append(temp)
     print("Total missing sample: ", total_missing_sample)
     extracted_emb = pd.DataFrame(extracted_emb)
