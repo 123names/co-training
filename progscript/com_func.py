@@ -90,6 +90,7 @@ def read_text_embedding(Dataset = "pubmed", emb_type = "off", training_size = "3
         labeled_only = False
     text_emb = []
     emb_pid = []
+    final_text_emb = []
     while True:
         if emb_type == "tf":
             modelSaveDir = "../models/"+Dataset+"/tf/text_sample="+training_size+"/"
@@ -173,18 +174,21 @@ def read_text_embedding(Dataset = "pubmed", emb_type = "off", training_size = "3
         else:
             print("Embedding type not available, selecting default setting")
             emb_type="off"
-    if emb_type != "off":
+
+    if (emb_type != "off") and (emb_type not in ["tf", "tf_idf"]):
         print("Total text vector records:",len(text_emb))
         print("Vector dimension: ", len(text_emb[0]))
         final_text_emb = np.column_stack((emb_pid,text_emb))
         final_text_emb = sorted(final_text_emb,key=lambda x: (int(x[0])))
-    return final_text_emb
+        return final_text_emb
+    return emb_pid,text_emb 
 
 # read trained paper citation graph
 def read_citation_embedding_sorted(Dataset = "pubmed", emb_type = "off", labeled_only = True):
     
     citation_emb = []
     emb_pid = []
+    final_citation_emb = []
     while True:
         if emb_type == "n2v":
             if labeled_only:
@@ -236,8 +240,6 @@ def visualizeWithPCA(data, label, plot_title, plotSavingPath=None, name=None, ma
     # pca on input data
     pca = PCA(n_components=2)
     pca_transformed = pca.fit_transform(X=data)
-    #print("PCA_transformed data: ",pca_transformed[:3])
-    #print(label[:3])
     pca_one = pca_transformed[:,0]
     pca_two = pca_transformed[:,1]
     # plot to show
@@ -252,13 +254,13 @@ def visualizeWithPCA(data, label, plot_title, plotSavingPath=None, name=None, ma
             ax.annotate("Plot contains "+str(len(np.unique(label)))+" labeles thus omitted details", xy=(1, 0), xycoords='axes fraction',
                         fontsize=16,xytext=(-5, 5), textcoords='offset points', ha='right', va='bottom')
     ax.legend()
-    plt.xlabel("PCA one")
-    plt.ylabel("PCA two")
+    plt.xlabel("First principal component",fontsize=14)
+    plt.ylabel("Second principal component",fontsize=14)
     # save plot
     if plotSavingPath!=None and name!=None:
         if not os.path.exists(plotSavingPath):
             os.makedirs(plotSavingPath)
-        plt.savefig((plotSavingPath+name+"_PCA.png").encode('utf-8'))
+        plt.savefig(fname=plotSavingPath+name+"_PCA.png",dpi=100)
     plt.show()
 
 def select_productive_groups(labeled_data, threshold):
@@ -451,6 +453,9 @@ def k_fold_cv(data, label, clf, k=10, verbose=True):
         label_pred = per_fold_clf.predict(data_test)
         allTrueLabel.extend(label_test)
         allPredLabel.extend(label_pred)
+        if verbose:
+            print(metrics.classification_report(label_test, label_pred))
+            print(metrics.confusion_matrix(label_test, label_pred).ravel())
 
     accuracy = accuracy_score(allTrueLabel, allPredLabel)
     f1 = f1_score(allTrueLabel, allPredLabel,average='macro')
