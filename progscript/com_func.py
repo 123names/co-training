@@ -237,31 +237,34 @@ def read_citation_embedding_sorted(Dataset = "pubmed", emb_type = "off", labeled
 # Principal Component Analysis (PCA) applied to this data identifies the combination of attributes
 # (principal components, or directions in the feature space) that account for the most variance in the data.
 def visualizeWithPCA(data, label, plot_title, plotSavingPath=None, name=None, max_show_label = 10):
-    # pca on input data
-    pca = PCA(n_components=2)
-    pca_transformed = pca.fit_transform(X=data)
-    pca_one = pca_transformed[:,0]
-    pca_two = pca_transformed[:,1]
-    # plot to show
-    fig, ax = plt.subplots(figsize=(9,7))
-    for author in np.unique(label):
-        ix = np.where(label == author)
-        ax.set_title(plot_title, fontsize=18)
-        if len(np.unique(label))<max_show_label:
-            ax.scatter(pca_one[ix], pca_two[ix], cmap='viridis', label = author, s = 50)
-        else:
-            ax.scatter(pca_one[ix], pca_two[ix], cmap='viridis', s = 50)
-            ax.annotate("Plot contains "+str(len(np.unique(label)))+" labeles thus omitted details", xy=(1, 0), xycoords='axes fraction',
-                        fontsize=16,xytext=(-5, 5), textcoords='offset points', ha='right', va='bottom')
-    ax.legend()
-    plt.xlabel("First principal component",fontsize=14)
-    plt.ylabel("Second principal component",fontsize=14)
-    # save plot
-    if plotSavingPath!=None and name!=None:
-        if not os.path.exists(plotSavingPath):
-            os.makedirs(plotSavingPath)
-        plt.savefig(fname=plotSavingPath+name+"_PCA.png",dpi=100)
-    plt.show()
+    if plotSavingPath == None:
+        print("Set no plot")
+    else:
+        # pca on input data
+        pca = PCA(n_components=2)
+        pca_transformed = pca.fit_transform(X=data)
+        pca_one = pca_transformed[:,0]
+        pca_two = pca_transformed[:,1]
+        # plot to show
+        fig, ax = plt.subplots(figsize=(9,7))
+        for author in np.unique(label):
+            ix = np.where(label == author)
+            ax.set_title(plot_title, fontsize=18)
+            if len(np.unique(label))<max_show_label:
+                ax.scatter(pca_one[ix], pca_two[ix], cmap='viridis', label = author, s = 50)
+            else:
+                ax.scatter(pca_one[ix], pca_two[ix], cmap='viridis', s = 50)
+                ax.annotate("Plot contains "+str(len(np.unique(label)))+" labeles thus omitted details", xy=(1, 0), 
+                            xycoords='axes fraction', fontsize=16,xytext=(-5, 5), textcoords='offset points', ha='right', va='bottom')
+        ax.legend()
+        plt.xlabel("First principal component",fontsize=14)
+        plt.ylabel("Second principal component",fontsize=14)
+        # save plot
+        if plotSavingPath!=None and name!=None:
+            if not os.path.exists(plotSavingPath):
+                os.makedirs(plotSavingPath)
+            plt.savefig(fname=plotSavingPath+name+"_PCA.png",dpi=100)
+        plt.show()
 
 def select_productive_groups(labeled_data, threshold):
     # count number of paper each author write based on author ID
